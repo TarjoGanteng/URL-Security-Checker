@@ -8,11 +8,15 @@ import {
   Info,
   ChevronDown,
   ChevronUp,
+  RefreshCw,
+  Clock,
 } from "lucide-react";
 import { VirusTotalResult, VirusTotalEngineResult, FEATURED_VENDORS } from "@/lib/types";
 
 interface VirusTotalResultProps {
   result: VirusTotalResult;
+  onReanalyze?: () => void;
+  isReanalyzing?: boolean;
 }
 
 function formatDate(timestamp?: number): string {
@@ -138,13 +142,40 @@ function VendorResultBadge({
 
 export default function VirusTotalResultCard({
   result,
+  onReanalyze,
+  isReanalyzing,
 }: VirusTotalResultProps) {
   const [showAllVendors, setShowAllVendors] = useState(false);
 
-  if (!result.data?.attributes) {
+  // If no attributes or status is submitted
+  if (!result.data?.attributes || result.status === "submitted") {
     return (
-      <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm">
-        {result.message || "Data analisis VirusTotal belum tersedia atau sedang diproses."}
+      <div className="rounded-2xl border border-blue-200 bg-blue-50/80 p-5 dark:bg-blue-950/30 dark:border-blue-800/60 animate-slide-up space-y-4">
+        <div className="flex items-start gap-3.5">
+          <div className="p-2.5 rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/60 dark:text-blue-400 flex-shrink-0">
+            <Clock className="h-6 w-6 animate-pulse" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="text-sm font-bold text-blue-900 dark:text-blue-200 mb-1">
+              Pemindaian Sedang Berlangsung di VirusTotal
+            </h4>
+            <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
+              Tautan ini baru pertama kali dipindai oleh VirusTotal. Mesin analisis sedang memindai tautan di cloud. Biasanya membutuhkan waktu 10–20 detik.
+            </p>
+          </div>
+        </div>
+
+        {onReanalyze && (
+          <button
+            type="button"
+            onClick={onReanalyze}
+            disabled={isReanalyzing}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-sm"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isReanalyzing ? "animate-spin" : ""}`} />
+            <span>{isReanalyzing ? "Memeriksa Ulang..." : "Cek Ulang Hasil Pemindaian Sekarang"}</span>
+          </button>
+        )}
       </div>
     );
   }
@@ -153,8 +184,6 @@ export default function VirusTotalResultCard({
   const stats = attributes.last_analysis_stats;
   const analysisResults = attributes.last_analysis_results || {};
 
-  const isMalicious = stats.malicious > 0;
-  const isSuspicious = stats.suspicious > 0 && !isMalicious;
   const totalEngines =
     stats.harmless +
     stats.malicious +
@@ -162,6 +191,42 @@ export default function VirusTotalResultCard({
     stats.undetected +
     stats.timeout;
   const totalDetections = stats.malicious + stats.suspicious;
+
+  // If scan is still in progress (totalEngines === 0)
+  if (totalEngines === 0 || Object.keys(analysisResults).length === 0) {
+    return (
+      <div className="rounded-2xl border border-blue-200 bg-blue-50/80 p-5 dark:bg-blue-950/30 dark:border-blue-800/60 animate-slide-up space-y-4">
+        <div className="flex items-start gap-3.5">
+          <div className="p-2.5 rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/60 dark:text-blue-400 flex-shrink-0">
+            <Clock className="h-6 w-6 animate-pulse" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="text-sm font-bold text-blue-900 dark:text-blue-200 mb-1">
+              Pemindaian Sedang Diproses oleh Vendor Keamanan
+            </h4>
+            <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
+              Hasil pemindaian 70+ vendor keamanan sedang dihimpun oleh server VirusTotal. Silakan klik tombol di bawah untuk memperbarui hasil.
+            </p>
+          </div>
+        </div>
+
+        {onReanalyze && (
+          <button
+            type="button"
+            onClick={onReanalyze}
+            disabled={isReanalyzing}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-sm"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isReanalyzing ? "animate-spin" : ""}`} />
+            <span>{isReanalyzing ? "Memeriksa Ulang..." : "Cek Ulang Hasil Pemindaian Sekarang"}</span>
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  const isMalicious = stats.malicious > 0;
+  const isSuspicious = stats.suspicious > 0 && !isMalicious;
 
   const featuredResults = FEATURED_VENDORS.map((v) => {
     const key = Object.keys(analysisResults).find(

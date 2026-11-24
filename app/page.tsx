@@ -311,7 +311,11 @@ export default function HomePage() {
                   </span>
                   <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
                 </div>
-                <VirusTotalResultCard result={vtResult} />
+                <VirusTotalResultCard
+                  result={vtResult}
+                  onReanalyze={handleVirusTotalAnalysis}
+                  isReanalyzing={vtLoading}
+                />
               </div>
             )}
 
