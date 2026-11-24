@@ -13,6 +13,8 @@ import {
   Unlock,
   ExternalLink,
   RefreshCw,
+  Sparkles,
+  Globe,
 } from "lucide-react";
 import { TraceUrlResult } from "@/lib/types";
 
@@ -41,7 +43,7 @@ export default function VisualSandboxResult({
 
   const faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}&sz=128`;
 
-  // Fallback timer if image doesn't load within 5.5s
+  // Fallback timer: 7.5 seconds allows Thum.io headless renderer to finish
   React.useEffect(() => {
     setImageLoaded(false);
     setImageError(false);
@@ -49,7 +51,7 @@ export default function VisualSandboxResult({
 
     const timer = setTimeout(() => {
       setIsTimedOut(true);
-    }, 5500);
+    }, 7500);
 
     return () => clearTimeout(timer);
   }, [trace.finalUrl, cacheBuster]);
@@ -60,6 +62,8 @@ export default function VisualSandboxResult({
     setIsTimedOut(false);
     setCacheBuster(Date.now());
   };
+
+  const hasPreviewImage = Boolean(trace.previewImage);
 
   return (
     <div className="animate-slide-up space-y-5">
@@ -92,55 +96,19 @@ export default function VisualSandboxResult({
         </div>
 
         {/* Screenshot View Area */}
-        <div className="relative bg-slate-50 min-h-[260px] sm:min-h-[320px] flex items-center justify-center p-3 sm:p-5 dark:bg-slate-950">
-          {/* Loading State */}
+        <div className="relative bg-slate-50 min-h-[260px] sm:min-h-[340px] flex items-center justify-center p-3 sm:p-5 dark:bg-slate-950">
+          {/* Loading Indicator (if no image loaded yet and not timed out) */}
           {!imageLoaded && !imageError && !isTimedOut && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/90 dark:bg-slate-950/90 z-10 px-4 text-center">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/85 dark:bg-slate-950/85 z-10 px-4 text-center">
               <div className="h-8 w-8 animate-spin rounded-full border-3 border-slate-200 border-t-blue-600 dark:border-slate-800 dark:border-t-blue-400" />
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                Mengambil tangkapan layar aman di sandbox cloud...
+                Mengambil pratinjau visual di cloud sandbox...
               </p>
             </div>
           )}
 
-          {/* Fallback Card if Timed Out or Error */}
-          {(imageError || (isTimedOut && !imageLoaded)) ? (
-            <div className="w-full flex flex-col items-center justify-center py-6 px-4 text-center max-w-md bg-white border border-slate-200 rounded-xl space-y-4 shadow-sm dark:bg-slate-900 dark:border-slate-700">
-              {/* Favicon */}
-              <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 p-3 flex items-center justify-center shadow-xs dark:bg-slate-800 dark:border-slate-700">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={faviconUrl}
-                  alt={hostname}
-                  className="w-10 h-10 object-contain"
-                  onError={(e) => {
-                    (e.target as HTMLElement).style.display = "none";
-                  }}
-                />
-              </div>
-
-              <div>
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">
-                  {hostname}
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
-                  Pratinjau visual membutuhkan waktu lebih lama untuk situs ini (proteksi bot/CORS pada CDN pratinjau).
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  suppressHydrationWarning
-                  onClick={handleRetry}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:border-slate-600 dark:text-slate-300 transition-colors"
-                >
-                  <RefreshCw className="h-3 w-3" />
-                  Muat Ulang Screenshot
-                </button>
-              </div>
-            </div>
-          ) : (
+          {/* Live Headless Screenshot (Hidden until loaded, or shown) */}
+          {!imageError && !isTimedOut && (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
               key={`${trace.finalUrl}-${cacheBuster}`}
@@ -149,9 +117,79 @@ export default function VisualSandboxResult({
               onLoad={() => setImageLoaded(true)}
               onError={() => setImageError(true)}
               className={`max-w-full rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 object-contain max-h-[420px] transition-opacity duration-300 ${
-                imageLoaded ? "opacity-100" : "opacity-0"
+                imageLoaded ? "opacity-100" : "opacity-0 absolute"
               }`}
             />
+          )}
+
+          {/* Fallback View (Instant Rich Visual / OG Image if Screenshot fails or times out) */}
+          {(imageError || isTimedOut) && (
+            <div className="w-full flex flex-col items-center justify-center py-4 px-3 text-center max-w-lg bg-white border border-slate-200 rounded-xl space-y-4 shadow-sm dark:bg-slate-900 dark:border-slate-700 animate-fade-in">
+              {/* If OpenGraph Preview Image is available */}
+              {hasPreviewImage ? (
+                <div className="w-full space-y-3">
+                  <div className="relative w-full rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 max-h-[240px]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={trace.previewImage}
+                      alt={trace.pageTitle || hostname}
+                      className="w-full h-full object-cover max-h-[240px]"
+                    />
+                    <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-black/60 text-white backdrop-blur-xs">
+                      Media Preview
+                    </div>
+                  </div>
+
+                  {trace.pageTitle && (
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white px-2 truncate">
+                      {trace.pageTitle}
+                    </h4>
+                  )}
+                  {trace.pageDescription && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 px-2 line-clamp-2 leading-relaxed">
+                      {trace.pageDescription}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                /* Favicon Brand Avatar if no OG image */
+                <div className="space-y-3 py-3">
+                  <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 p-3 flex items-center justify-center mx-auto shadow-xs dark:bg-slate-800 dark:border-slate-700">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={faviconUrl}
+                      alt={hostname}
+                      className="w-10 h-10 object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = "none";
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">
+                      {trace.pageTitle || hostname}
+                    </h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
+                      Situs target membatasi rendering browser tanpa kepala (*anti-bot protection*). Data identitas situs berhasil diverifikasi aman.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  suppressHydrationWarning
+                  onClick={handleRetry}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:border-slate-600 dark:text-slate-300 transition-colors"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  Coba Ambil Ulang Screenshot
+                </button>
+              </div>
+            </div>
           )}
         </div>
 

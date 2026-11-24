@@ -147,6 +147,9 @@ export interface TraceUrlResult {
   hops: RedirectHop[];
   securityNotes: SecurityNote[];
   screenshotUrl?: string;
+  previewImage?: string;
+  pageTitle?: string;
+  pageDescription?: string;
   serverHeaders?: {
     server?: string;
     contentType?: string;

@@ -170,6 +170,54 @@ export async function POST(request: NextRequest) {
     // Internal proxy screenshot route (avoids adblocker / CORS issues)
     const screenshotUrl = `/api/screenshot?url=${encodeURIComponent(finalUrl)}`;
 
+    let previewImage: string | undefined;
+    let pageTitle: string | undefined;
+    let pageDescription: string | undefined;
+
+    // Quick fetch for OpenGraph visual metadata
+    try {
+      const metaController = new AbortController();
+      const metaTimer = setTimeout(() => metaController.abort(), 3500);
+
+      const htmlRes = await fetch(finalUrl, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+        },
+        signal: metaController.signal,
+        cache: "no-store",
+      });
+      clearTimeout(metaTimer);
+
+      if (htmlRes.ok) {
+        const text = await htmlRes.text();
+
+        // 1. Title
+        const titleMatch = text.match(/<title[^>]*>([^<]+)<\/title>/i);
+        if (titleMatch) pageTitle = titleMatch[1].trim();
+
+        // 2. OpenGraph Image
+        const ogMatch =
+          text.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
+          text.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i) ||
+          text.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i);
+        if (ogMatch) {
+          try {
+            previewImage = new URL(ogMatch[1], finalUrl).toString();
+          } catch {}
+        }
+
+        // 3. Description
+        const descMatch =
+          text.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i) ||
+          text.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i);
+        if (descMatch) pageDescription = descMatch[1].trim();
+      }
+    } catch {
+      // ignore
+    }
+
     const result: TraceUrlResult = {
       initialUrl,
       finalUrl,
@@ -178,6 +226,9 @@ export async function POST(request: NextRequest) {
       hops,
       securityNotes,
       screenshotUrl,
+      previewImage,
+      pageTitle,
+      pageDescription,
       serverHeaders: lastHeaders
         ? {
             server: lastHeaders.get("server") || undefined,
