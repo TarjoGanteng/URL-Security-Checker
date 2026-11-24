@@ -5,6 +5,7 @@ import { Shield, AlertCircle, RefreshCw, Eye, Globe } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import GuideModal from "@/components/GuideModal";
 import ContactModal from "@/components/ContactModal";
+import EducationModal from "@/components/EducationModal";
 import UrlForm from "@/components/UrlForm";
 import SafeBrowsingResultCard from "@/components/SafeBrowsingResult";
 import VirusTotalResultCard from "@/components/VirusTotalResult";
@@ -55,6 +56,7 @@ export default function HomePage() {
   const [history, setHistory] = useState<CheckHistoryItem[]>([]);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
+  const [isEducationOpen, setIsEducationOpen] = useState(false);
 
   // Load history on mount
   useEffect(() => {
@@ -187,6 +189,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
       {/* Top Navigation Header */}
       <Navbar
+        onOpenEducation={() => setIsEducationOpen(true)}
         onOpenGuide={() => setIsGuideOpen(true)}
         onOpenContact={() => setIsContactOpen(true)}
       />
@@ -420,6 +423,15 @@ export default function HomePage() {
             <button
               type="button"
               suppressHydrationWarning
+              onClick={() => setIsEducationOpen(true)}
+              className="text-purple-600 dark:text-purple-400 hover:underline transition-colors underline-offset-4 font-semibold"
+            >
+              🎓 Edukasi &amp; Literasi Keamanan
+            </button>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
+            <button
+              type="button"
+              suppressHydrationWarning
               onClick={() => setIsGuideOpen(true)}
               className="hover:text-slate-700 dark:hover:text-white transition-colors underline-offset-4 hover:underline"
             >
@@ -445,6 +457,10 @@ export default function HomePage() {
       </main>
 
       {/* Interactive Modals */}
+      <EducationModal
+        isOpen={isEducationOpen}
+        onClose={() => setIsEducationOpen(false)}
+      />
       <GuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
       <ContactModal isOpen={isContactOpen} onClose={() => setIsContactOpen(false)} />
     </div>
