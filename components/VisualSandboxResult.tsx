@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Eye,
   ArrowRight,
@@ -22,6 +22,9 @@ interface VisualSandboxResultProps {
   trace: TraceUrlResult;
 }
 
+const MAX_AUTO_RETRY = 3;
+const TIMEOUT_MS = 9000; // 9s per attempt
+
 export default function VisualSandboxResult({
   trace,
 }: VisualSandboxResultProps) {
@@ -33,6 +36,8 @@ export default function VisualSandboxResult({
   const [imageError, setImageError] = useState(false);
   const [isTimedOut, setIsTimedOut] = useState(false);
   const [cacheBuster, setCacheBuster] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
+  const retryCountRef = useRef(0);
 
   let hostname = trace.finalUrl;
   try {
@@ -43,20 +48,38 @@ export default function VisualSandboxResult({
 
   const faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}&sz=128`;
 
-  // Fallback timer: 7.5 seconds allows Thum.io headless renderer to finish
+  // Auto-retry logic: retries up to MAX_AUTO_RETRY times before showing fallback
   React.useEffect(() => {
     setImageLoaded(false);
     setImageError(false);
     setIsTimedOut(false);
 
     const timer = setTimeout(() => {
-      setIsTimedOut(true);
-    }, 7500);
+      const currentRetry = retryCountRef.current;
+      if (currentRetry < MAX_AUTO_RETRY) {
+        // Auto retry silently
+        retryCountRef.current = currentRetry + 1;
+        setRetryCount(currentRetry + 1);
+        setCacheBuster(Date.now());
+      } else {
+        // All retries exhausted → show fallback
+        setIsTimedOut(true);
+      }
+    }, TIMEOUT_MS);
 
     return () => clearTimeout(timer);
   }, [trace.finalUrl, cacheBuster]);
 
+  // Reset retry counter when URL changes
+  React.useEffect(() => {
+    retryCountRef.current = 0;
+    setRetryCount(0);
+    setCacheBuster(0);
+  }, [trace.finalUrl]);
+
   const handleRetry = () => {
+    retryCountRef.current = 0;
+    setRetryCount(0);
     setImageLoaded(false);
     setImageError(false);
     setIsTimedOut(false);
@@ -102,7 +125,9 @@ export default function VisualSandboxResult({
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/85 dark:bg-slate-950/85 z-10 px-4 text-center">
               <div className="h-8 w-8 animate-spin rounded-full border-3 border-slate-200 border-t-blue-600 dark:border-slate-800 dark:border-t-blue-400" />
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                Mengambil pratinjau visual di cloud sandbox...
+                {retryCount === 0
+                  ? "Mengambil pratinjau visual di cloud sandbox..."
+                  : `Mencoba ulang otomatis... (${retryCount}/${MAX_AUTO_RETRY})`}
               </p>
             </div>
           )}
@@ -171,7 +196,7 @@ export default function VisualSandboxResult({
                       {trace.pageTitle || hostname}
                     </h4>
                     <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
-                      Situs target membatasi rendering browser tanpa kepala (*anti-bot protection*). Data identitas situs berhasil diverifikasi aman.
+                      Pratinjau visual tidak tersedia. Data identitas situs berhasil diverifikasi melalui metadata.
                     </p>
                   </div>
                 </div>
