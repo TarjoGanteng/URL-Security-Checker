@@ -25,32 +25,71 @@ export async function GET(request: NextRequest) {
       parsed.hostname.includes("youtube.com") ||
       parsed.hostname === "youtu.be"
     ) {
-      let ytImage = "https://www.youtube.com/img/desktop/yt_1200.png";
+      // Priority 1: Specific video thumbnail
       const v = parsed.searchParams.get("v");
-      if (v) {
-        ytImage = `https://img.youtube.com/vi/${v}/maxresdefault.jpg`;
-      } else if (parsed.hostname === "youtu.be") {
-        const id = parsed.pathname.replace(/^\//, "");
-        if (id) ytImage = `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
+      let ytVideoId: string | null = v;
+      if (!ytVideoId && parsed.hostname === "youtu.be") {
+        ytVideoId = parsed.pathname.replace(/^\//, "") || null;
       }
 
-      try {
-        const ytRes = await fetch(ytImage, { cache: "no-store" });
-        if (ytRes.ok) {
-          const buffer = await ytRes.arrayBuffer();
-          const contentType = ytRes.headers.get("content-type") || "image/jpeg";
-          return new NextResponse(buffer, {
-            status: 200,
-            headers: {
-              "Content-Type": contentType,
-              "Cache-Control":
-                "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
-            },
-          });
+      if (ytVideoId) {
+        // Try maxresdefault, fallback to hqdefault
+        for (const quality of ["maxresdefault", "hqdefault"]) {
+          try {
+            const thumbUrl = `https://img.youtube.com/vi/${ytVideoId}/${quality}.jpg`;
+            const ytRes = await fetch(thumbUrl, { cache: "no-store" });
+            if (ytRes.ok) {
+              const buffer = await ytRes.arrayBuffer();
+              if (buffer.byteLength > 5000) {
+                return new NextResponse(buffer, {
+                  status: 200,
+                  headers: {
+                    "Content-Type": "image/jpeg",
+                    "Cache-Control":
+                      "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
+                  },
+                });
+              }
+            }
+          } catch { /* try next */ }
         }
-      } catch {
-        // Fall back to general engines
       }
+
+      // Priority 2: YouTube homepage / channel / search — use official OG image
+      // YouTube's OG image is always this static banner (served from Google CDN, no bot block)
+      const ytBanners = [
+        "https://www.gstatic.com/youtube/img/branding/youtubelogo/svg/youtubelogo.svg",
+        "https://yt3.googleusercontent.com/ytc/AIdro_kaKhqkPqnPJi3JF98lNDJjkimevkF9wQEByRXdTHGzqw=s900-c-k-c0x00ffffff-no-rj",
+      ];
+
+      for (const bannerUrl of ytBanners) {
+        try {
+          const r = await fetch(bannerUrl, {
+            headers: { "User-Agent": "Mozilla/5.0 compatible Googlebot" },
+            cache: "no-store",
+          });
+          if (r.ok) {
+            const buffer = await r.arrayBuffer();
+            const ct = r.headers.get("content-type") || "image/jpeg";
+            if (buffer.byteLength > 500) {
+              return new NextResponse(buffer, {
+                status: 200,
+                headers: {
+                  "Content-Type": ct,
+                  "Cache-Control":
+                    "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
+                },
+              });
+            }
+          }
+        } catch { /* try next */ }
+      }
+
+      // Last resort: return a 302 redirect to the YouTube logo PNG so browser shows something
+      return NextResponse.redirect(
+        "https://www.youtube.com/img/desktop/yt_1200.png",
+        { status: 302 }
+      );
     }
 
     // ============================================================
