@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
-import { Shield, AlertCircle, RefreshCw, Eye, Globe } from "lucide-react";
+import { Shield, AlertCircle, RefreshCw, Eye, Link2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import GuideModal from "@/components/GuideModal";
 import ContactModal from "@/components/ContactModal";
@@ -232,7 +232,7 @@ export default function HomePage() {
             {/* Input Form Card */}
             <div className="border rounded-2xl p-6 sm:p-7 bg-white border-slate-200 shadow-sm dark:bg-slate-900 dark:border-slate-800">
               <h2 className="text-base font-semibold mb-3 flex items-center gap-2 text-slate-900 dark:text-slate-200">
-                <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <Link2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 Pemeriksaan Tautan
               </h2>
               <UrlForm onSubmit={handleCheckUrl} isLoading={sbLoading || traceLoading} />

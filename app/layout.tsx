@@ -7,6 +7,11 @@ export const metadata: Metadata = {
     "Periksa keamanan URL secara instan menggunakan Google Safe Browsing dan VirusTotal. Lindungi diri dari phishing, malware, dan ancaman online.",
   keywords: ["url checker", "keamanan url", "safe browsing", "virus total", "phishing checker"],
   authors: [{ name: "URL Security Checker" }],
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
   robots: "noindex, nofollow",
   openGraph: {
     title: "URL Security Checker",
