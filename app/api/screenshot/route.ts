@@ -17,12 +17,49 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================
-    // Engine 1: Thum.io (Ultra-fast, modern headless browser CDN)
+    // Special Handling: YouTube & Google Video Platforms
+    // (Google blocks headless datacenter bots from loading full page,
+    // so we serve their high-res official media banners instantly)
+    // ============================================================
+    if (
+      parsed.hostname.includes("youtube.com") ||
+      parsed.hostname === "youtu.be"
+    ) {
+      let ytImage = "https://www.youtube.com/img/desktop/yt_1200.png";
+      const v = parsed.searchParams.get("v");
+      if (v) {
+        ytImage = `https://img.youtube.com/vi/${v}/maxresdefault.jpg`;
+      } else if (parsed.hostname === "youtu.be") {
+        const id = parsed.pathname.replace(/^\//, "");
+        if (id) ytImage = `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
+      }
+
+      try {
+        const ytRes = await fetch(ytImage, { cache: "no-store" });
+        if (ytRes.ok) {
+          const buffer = await ytRes.arrayBuffer();
+          const contentType = ytRes.headers.get("content-type") || "image/jpeg";
+          return new NextResponse(buffer, {
+            status: 200,
+            headers: {
+              "Content-Type": contentType,
+              "Cache-Control":
+                "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
+            },
+          });
+        }
+      } catch {
+        // Fall back to general engines
+      }
+    }
+
+    // ============================================================
+    // Engine 1: Thum.io (Fast Headless Browser CDN)
     // ============================================================
     try {
       const thumUrl = `https://image.thum.io/get/width/1024/crop/650/${targetUrl}`;
       const controller1 = new AbortController();
-      const timer1 = setTimeout(() => controller1.abort(), 6500);
+      const timer1 = setTimeout(() => controller1.abort(), 6000);
 
       const res1 = await fetch(thumUrl, {
         headers: {
@@ -38,8 +75,8 @@ export async function GET(request: NextRequest) {
         const buffer = await res1.arrayBuffer();
         const contentType = res1.headers.get("content-type") || "image/png";
 
-        // Validate buffer is a real image (more than 1KB)
-        if (buffer.byteLength > 1024) {
+        // Filter out small generic error placeholders
+        if (buffer.byteLength > 2000) {
           return new NextResponse(buffer, {
             status: 200,
             headers: {
@@ -51,7 +88,7 @@ export async function GET(request: NextRequest) {
         }
       }
     } catch {
-      // Continue to Engine 2 fallback
+      // Continue to Engine 2
     }
 
     // ============================================================
@@ -79,7 +116,7 @@ export async function GET(request: NextRequest) {
         const buffer = await res2.arrayBuffer();
         const contentType = res2.headers.get("content-type") || "image/jpeg";
 
-        if (buffer.byteLength > 1024) {
+        if (buffer.byteLength > 1000) {
           return new NextResponse(buffer, {
             status: 200,
             headers: {
