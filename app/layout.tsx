@@ -8,9 +8,13 @@ export const metadata: Metadata = {
   keywords: ["url checker", "keamanan url", "safe browsing", "virus total", "phishing checker"],
   authors: [{ name: "URL Security Checker" }],
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/icon.png",
   },
   robots: "noindex, nofollow",
   openGraph: {
